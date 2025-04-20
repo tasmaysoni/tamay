@@ -1,1 +1,2369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tamay - Connect with Strangers via Video Chat</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #7e22ce;
+            --secondary: #06b6d4;
+            --accent: #8b5cf6;
+            --text: #1f2937;
+            --bg-light: #f9fafb;
+            --bg-dark: #1e1b4b;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            transition: background-color 0.3s ease;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+        
+        .shadow-custom {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        .video-container {
+            position: relative;
+            aspect-ratio: 16/9;
+        }
+        
+        .dark-mode {
+            background-color: var(--bg-dark);
+            color: white;
+        }
+        
+        .connection-dot {
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .connection-dot.connected {
+            background-color: #10b981;
+        }
+        
+        .connection-dot.connecting {
+            background-color: #f59e0b;
+        }
+        
+        .connection-dot.disconnected {
+            background-color: #ef4444;
+        }
+        
+        @keyframes pulse {
+            0% {
+                opacity: 0.7;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0.7;
+            }
+        }
+        
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .blur-loading {
+            filter: blur(4px);
+        }
+        
+        #chatMessages {
+            height: 300px;
+            overflow-y: auto;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .message.sent {
+            background-color: var(--primary);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.received {
+            background-color: #e5e7eb;
+            color: var(--text);
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 120px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 500px;
+        }
+        
+        .dark-mode .modal-content {
+            background-color: #2d3748;
+            color: white;
+        }
+
+        /* Logo Animation */
+        .logo-pulse {
+            animation: logo-pulse 2s infinite;
+        }
+
+        @keyframes logo-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .user-counter {
+            background: rgba(0,0,0,0.2);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            margin-left: 10px;
+        }
+
+        .user-counter .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        /* Better onboarding */
+        .onboarding-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .onboarding-content {
+            max-width: 500px;
+            background-color: #2d3748;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        /* User status indicators */
+        .online-status {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .online-status.online {
+            background-color: #10b981;
+        }
+
+        .online-status.away {
+            background-color: #f59e0b;
+        }
+
+        .online-status.busy {
+            background-color: #ef4444;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <nav class="bg-white shadow-md fixed w-full z-20">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center">
+                <div class="logo-container flex items-center">
+                    <svg class="w-8 h-8 logo-pulse" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="url(#paint0_linear)" stroke-width="2"/>
+                        <path d="M15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10Z" fill="url(#paint1_linear)"/>
+                        <path d="M6.16803 18.8747C6.97539 17.0536 9.27417 16 12.0002 16C14.7262 16 17.0249 17.0536 17.8323 18.8747C16.3001 20.1607 14.2439 21 12.0002 21C9.75642 21 7.70025 20.1607 6.16803 18.8747Z" fill="url(#paint2_linear)"/>
+                        <defs>
+                            <linearGradient id="paint0_linear" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#7e22ce"/>
+                                <stop offset="1" stop-color="#06b6d4"/>
+                            </linearGradient>
+                            <linearGradient id="paint1_linear" x1="9" y1="7" x2="15" y2="13" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#7e22ce"/>
+                                <stop offset="1" stop-color="#06b6d4"/>
+                            </linearGradient>
+                            <linearGradient id="paint2_linear" x1="6" y1="16" x2="18" y2="21" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#7e22ce"/>
+                                <stop offset="1" stop-color="#06b6d4"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <h1 class="text-2xl font-bold gradient-text ml-2">Tamay</h1>
+                    <div class="user-counter">
+                        <span class="dot"></span>
+                        <span id="onlineUserCount">1,243 online</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hidden md:flex items-center space-x-6">
+                <a href="#" class="text-gray-700 hover:text-purple-600 transition">Home</a>
+                <a href="#features" class="text-gray-700 hover:text-purple-600 transition">Features</a>
+                <a href="#how-it-works" class="text-gray-700 hover:text-purple-600 transition">How It Works</a>
+                <a href="#faq" class="text-gray-700 hover:text-purple-600 transition">FAQ</a>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="darkModeToggle" class="p-2 rounded-full hover:bg-gray-200 transition">
+                    <i class="fas fa-moon text-gray-700"></i>
+                </button>
+                <button id="userProfileBtn" class="hidden sm:flex items-center bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-full transition">
+                    <i class="fas fa-user mr-2"></i>Login
+                </button>
+                <div id="profileDropdown" class="relative hidden"></div>
+            </div>
+            <button id="mobileMenuBtn" class="md:hidden p-2 rounded-md text-gray-700 hover:bg-gray-200 transition">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+        <div id="mobileMenu" class="hidden md:hidden bg-white w-full">
+            <div class="container mx-auto px-4 py-2 flex flex-col space-y-3">
+                <a href="#" class="text-gray-700 hover:text-purple-600 transition py-2">Home</a>
+                <a href="#features" class="text-gray-700 hover:text-purple-600 transition py-2">Features</a>
+                <a href="#how-it-works" class="text-gray-700 hover:text-purple-600 transition py-2">How It Works</a>
+                <a href="#faq" class="text-gray-700 hover:text-purple-600 transition py-2">FAQ</a>
+                <button id="mobileProfileBtn" class="hidden items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-full transition w-full">
+                    <i class="fas fa-user mr-2"></i>Profile
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-16">
+        <!-- Hero Section -->
+        <section class="py-10 md:py-20">
+            <div class="container mx-auto px-4">
+                <div class="flex flex-col md:flex-row items-center">
+                    <div class="md:w-1/2 mb-10 md:mb-0">
+                        <h1 class="text-4xl md:text-5xl font-bold mb-6">Connect with people around the world with <span class="gradient-text">Tamay</span></h1>
+                        <p class="text-lg text-gray-600 mb-8">Experience real-time video chat with strangers, make new friends, and discover exciting conversations with our advanced matching system.</p>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button id="startChatQuickBtn" class="gradient-bg text-white font-medium py-3 px-6 rounded-full hover:opacity-90 transition">
+                                <i class="fas fa-video mr-2"></i>Quick Start
+                            </button>
+                            <button id="learnMoreBtn" class="bg-white text-purple-600 border border-purple-600 font-medium py-3 px-6 rounded-full hover:bg-purple-50 transition">
+                                <i class="fas fa-info-circle mr-2"></i>Learn More
+                            </button>
+                        </div>
+                    </div>
+                    <div class="md:w-1/2 px-4">
+                        <div class="relative w-full rounded-2xl overflow-hidden shadow-xl">
+                            <img src="https://cdn.jsdelivr.net/gh/useblackbox/cdn-images@main/tamay-hero-image.png" alt="Tamay Video Chat" class="w-full h-auto rounded-2xl">
+                            <div class="absolute bottom-4 left-4 bg-white bg-opacity-90 px-3 py-1 rounded-full text-sm flex items-center">
+                                <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Video Chat Section -->
+        <section id="videoChatSection" class="py-12 bg-gray-100">
+            <div class="container mx-auto px-4">
+                <h2 class="text-3xl font-bold text-center mb-10">Video Chat</h2>
+                
+                <div class="flex flex-col lg:flex-row gap-6">
+                    <!-- Video Chat Container -->
+                    <div class="lg:w-3/4 bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex flex-col md:flex-row gap-4 mb-6">
+                            <!-- Local Video -->
+                            <div class="md:w-1/2">
+                                <div class="relative video-container bg-gray-200 rounded-lg overflow-hidden">
+                                    <video id="localVideo" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                                    <div class="badge bg-purple-600 text-white">You</div>
+                                    <div id="localStatus" class="absolute bottom-2 left-2 text-sm bg-black bg-opacity-50 text-white px-2 py-1 rounded-full">
+                                        <span class="connection-dot disconnected mr-2"></span>
+                                        <span id="localStatusText">Camera off</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Remote Video -->
+                            <div class="md:w-1/2">
+                                <div class="relative video-container bg-gray-200 rounded-lg overflow-hidden">
+                                    <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+                                    <div id="remoteBadge" class="badge bg-gray-600 text-white hidden">Stranger</div>
+                                    <div id="waitingOverlay" class="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-70">
+                                        <div class="text-center text-white">
+                                            <div class="animate-spin mb-3">
+                                                <i class="fas fa-circle-notch text-3xl"></i>
+                                            </div>
+                                            <p id="waitingText" class="text-lg">Waiting to connect...</p>
+                                        </div>
+                                    </div>
+                                    <div id="remoteStatus" class="absolute bottom-2 left-2 text-sm bg-black bg-opacity-50 text-white px-2 py-1 rounded-full hidden">
+                                        <span class="connection-dot disconnected mr-2"></span>
+                                        <span id="remoteStatusText">Disconnected</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Video Controls -->
+                        <div class="flex flex-wrap justify-center gap-4 my-4">
+                            <button id="toggleVideoBtn" class="p-3 rounded-full bg-gray-200 hover:bg-gray-300 transition tooltip">
+                                <i class="fas fa-video text-gray-700"></i>
+                                <span class="tooltip-text">Toggle Video</span>
+                            </button>
+                            <button id="toggleAudioBtn" class="p-3 rounded-full bg-gray-200 hover:bg-gray-300 transition tooltip">
+                                <i class="fas fa-microphone text-gray-700"></i>
+                                <span class="tooltip-text">Toggle Audio</span>
+                            </button>
+                            <button id="flipCameraBtn" class="p-3 rounded-full bg-gray-200 hover:bg-gray-300 transition tooltip">
+                                <i class="fas fa-sync-alt text-gray-700"></i>
+                                <span class="tooltip-text">Flip Camera</span>
+                            </button>
+                            <button id="screenshareBtn" class="p-3 rounded-full bg-gray-200 hover:bg-gray-300 transition tooltip">
+                                <i class="fas fa-desktop text-gray-700"></i>
+                                <span class="tooltip-text">Share Screen</span>
+                            </button>
+                            <button id="effectsBtn" class="p-3 rounded-full bg-gray-200 hover:bg-gray-300 transition tooltip">
+                                <i class="fas fa-magic text-gray-700"></i>
+                                <span class="tooltip-text">Video Effects</span>
+                            </button>
+                            <button id="reportBtn" class="p-3 rounded-full bg-red-100 hover:bg-red-200 transition tooltip">
+                                <i class="fas fa-flag text-red-600"></i>
+                                <span class="tooltip-text">Report User</span>
+                            </button>
+                        </div>
+
+                        <!-- Start/Next Button -->
+                        <div class="mt-6 text-center">
+                            <button id="startChatBtn" class="gradient-bg text-white font-bold py-3 px-10 rounded-full text-lg hover:opacity-90 transition w-full sm:w-auto">
+                                <i class="fas fa-play mr-2"></i>Start Chat
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Settings & Chat -->
+                    <div class="lg:w-1/4 flex flex-col gap-6">
+                        <!-- Chat Box -->
+                        <div class="bg-white rounded-xl shadow-lg p-4 flex-grow">
+                            <h3 class="text-lg font-semibold mb-3 border-b pb-2">Text Chat</h3>
+                            <div id="chatMessages" class="flex flex-col space-y-2 mb-4">
+                                <div class="text-center text-gray-500 text-sm my-2">Chat will be available when connected</div>
+                            </div>
+                            <div class="flex mt-auto">
+                                <input id="chatInput" type="text" class="flex-grow border rounded-l-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Type a message..." disabled>
+                                <button id="sendMessageBtn" class="bg-purple-600 text-white px-4 rounded-r-lg hover:bg-purple-700 transition disabled:opacity-50" disabled>
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Preferences -->
+                        <div class="bg-white rounded-xl shadow-lg p-4">
+                            <h3 class="text-lg font-semibold mb-3 border-b pb-2">Chat Preferences</h3>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Gender Preference</label>
+                                <select id="genderPreference" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="any">Any</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Region</label>
+                                <select id="regionPreference" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="global">Global</option>
+                                    <option value="northAmerica">North America</option>
+                                    <option value="europe">Europe</option>
+                                    <option value="asia">Asia</option>
+                                    <option value="southAmerica">South America</option>
+                                    <option value="africa">Africa</option>
+                                    <option value="oceania">Oceania</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Language</label>
+                                <select id="languagePreference" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="any">Any</option>
+                                    <option value="english">English</option>
+                                    <option value="spanish">Spanish</option>
+                                    <option value="french">French</option>
+                                    <option value="german">German</option>
+                                    <option value="chinese">Chinese</option>
+                                    <option value="japanese">Japanese</option>
+                                    <option value="russian">Russian</option>
+                                    <option value="arabic">Arabic</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Interests (comma separated)</label>
+                                <input type="text" id="interestsInput" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="music, travel, gaming...">
+                            </div>
+                            
+                            <div class="flex items-center mb-3">
+                                <input type="checkbox" id="enableTranslation" class="mr-2">
+                                <label for="enableTranslation" class="text-sm text-gray-700">Enable auto-translation</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="py-16">
+            <div class="container mx-auto px-4">
+                <h2 class="text-3xl font-bold text-center mb-2">Why Choose Tamay?</h2>
+                <p class="text-gray-600 text-center mb-12 max-w-2xl mx-auto">Our platform offers unique features designed to create meaningful connections in a safe environment.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Feature 1 -->
+                    <div class="card bg-white p-6 rounded-xl shadow-custom">
+                        <div class="rounded-full bg-purple-100 w-14 h-14 flex items-center justify-center mb-4">
+                            <i class="fas fa-shield-alt text-purple-600 text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Enhanced Privacy</h3>
+                        <p class="text-gray-600">End-to-end encryption ensures your conversations remain private and secure at all times.</p>
+                    </div>
+                    
+                    <!-- Feature 2 -->
+                    <div class="card bg-white p-6 rounded-xl shadow-custom">
+                        <div class="rounded-full bg-cyan-100 w-14 h-14 flex items-center justify-center mb-4">
+                            <i class="fas fa-language text-cyan-600 text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Real-time Translation</h3>
+                        <p class="text-gray-600">Chat with people who speak different languages with our automatic translation feature.</p>
+                    </div>
+                    
+                    <!-- Feature 3 -->
+                    <div class="card bg-white p-6 rounded-xl shadow-custom">
+                        <div class="rounded-full bg-indigo-100 w-14 h-14 flex items-center justify-center mb-4">
+                            <i class="fas fa-users text-indigo-600 text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Smart Matching</h3>
+                        <p class="text-gray-600">Our algorithm connects you with people who share similar interests and preferences.</p>
+                    </div>
+                    
+                    <!-- Feature 4 -->
+                    <div class="card bg-white p-6 rounded-xl shadow-custom">
+                        <div class="rounded-full bg-green-100 w-14 h-14 flex items-center justify-center mb-4">
+                            <i class="fas fa-tachometer-alt text-green-600 text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">High-Performance</h3>
+                        <p class="text-gray-600">Low-latency connections and adaptive quality ensure smooth video chats regardless of your internet speed.</p>
+                    </div>
+                    
+                    <!-- Feature 5 -->
+                    <div class="card bg-white p-6 rounded-xl shadow-custom">
+                        <div class="rounded-full bg-red-100 w-14 h-14 flex items-center justify-center mb-4">
+                            <i class="fas fa-gamepad text-red-600 text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Interactive Games</h3>
+                        <p class="text-gray-600">Break the ice with built-in games you can play with your chat partner during conversations.</p>
+                    </div>
+                    
+                    <!-- Feature 6 -->
+                    <div class="card bg-white p-6 rounded-xl shadow-custom">
+                        <div class="rounded-full bg-yellow-100 w-14 h-14 flex items-center justify-center mb-4">
+                            <i class="fas fa-mobile-alt text-yellow-600 text-xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Cross-Platform</h3>
+                        <p class="text-gray-600">Use Tamay on any device with a browser, no downloads or installations required.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section id="how-it-works" class="py-16 bg-gray-50">
+            <div class="container mx-auto px-4">
+                <h2 class="text-3xl font-bold text-center mb-2">How Tamay Works</h2>
+                <p class="text-gray-600 text-center mb-12 max-w-2xl mx-auto">Our advanced WebRTC technology connects you directly with other users for seamless, secure video chatting.</p>
+                
+                <div class="flex flex-col md:flex-row items-center justify-center gap-8">
+                    <!-- Step 1 -->
+                    <div class="md:w-1/3 text-center">
+                        <div class="rounded-full bg-purple-100 w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                            <span class="text-purple-600 font-bold text-xl">1</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Grant Permissions</h3>
+                        <p class="text-gray-600">Allow access to your camera and microphone when prompted by your browser.</p>
+                    </div>
+                    
+                    <!-- Step 2 -->
+                    <div class="md:w-1/3 text-center">
+                        <div class="rounded-full bg-purple-100 w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                            <span class="text-purple-600 font-bold text-xl">2</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Set Preferences</h3>
+                        <p class="text-gray-600">Customize your matching preferences to find the right conversation partners.</p>
+                    </div>
+                    
+                    <!-- Step 3 -->
+                    <div class="md:w-1/3 text-center">
+                        <div class="rounded-full bg-purple-100 w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                            <span class="text-purple-600 font-bold text-xl">3</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Start Chatting</h3>
+                        <p class="text-gray-600">Click the "Start Chat" button and get connected with someone new instantly.</p>
+                    </div>
+                </div>
+                
+                <div class="mt-16 bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="text-xl font-bold mb-4">Technical Overview</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold mb-2">Client-Side</h4>
+                            <ul class="list-disc pl-5 space-y-2 text-gray-600">
+                                <li>WebRTC for peer-to-peer connections</li>
+                                <li>MediaStream API for camera and microphone access</li>
+                                <li>WebSocket for signaling and coordination</li>
+                                <li>Adaptive bitrate for quality optimization</li>
+                                <li>Responsive design for all devices</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold mb-2">Server-Side</h4>
+                            <ul class="list-disc pl-5 space-y-2 text-gray-600">
+                                <li>WebSocket signaling server</li>
+                                <li>STUN/TURN servers for NAT traversal</li>
+                                <li>User matching algorithm</li>
+                                <li>Security measures and moderation</li>
+                                <li>Translation API integration</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section id="faq" class="py-16">
+            <div class="container mx-auto px-4">
+                <h2 class="text-3xl font-bold text-center mb-2">Frequently Asked Questions</h2>
+                <p class="text-gray-600 text-center mb-12 max-w-2xl mx-auto">Find answers to common questions about Tamay video chat platform.</p>
+                
+                <div class="max-w-3xl mx-auto">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold mb-2">Is Tamay completely free to use?</h3>
+                        <p class="text-gray-600">Yes, Tamay is completely free to use with all core features. We may introduce premium features in the future, but the basic video chat functionality will always remain free.</p>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold mb-2">How does Tamay ensure my privacy?</h3>
+                        <p class="text-gray-600">Tamay uses end-to-end encryption for all video and text communications. We don't store your chat content on our servers, and your connection is directly peer-to-peer, minimizing third-party access to your data.</p>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold mb-2">What should I do if I encounter inappropriate behavior?</h3>
+                        <p class="text-gray-600">Use the "Report" button during any chat to immediately flag inappropriate behavior. Our moderation team reviews all reports promptly and takes appropriate action against violators.</p>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold mb-2">Can I use Tamay on my mobile device?</h3>
+                        <p class="text-gray-600">Yes, Tamay works on any device with a modern web browser, including smartphones and tablets. Simply visit the website, and the interface will adapt to your screen size.</p>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold mb-2">How does the matching system work?</h3>
+                        <p class="text-gray-600">Our algorithm takes into account your preferences (gender, region, language, interests) and tries to find the best match currently available. If an exact match isn't available, it will gradually expand the criteria to connect you with someone.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between">
+                <div class="mb-8 md:mb-0">
+                    <div class="flex items-center mb-4">
+                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="url(#footer_paint0_linear)" stroke-width="2"/>
+                            <path d="M15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10Z" fill="url(#footer_paint1_linear)"/>
+                            <path d="M6.16803 18.8747C6.97539 17.0536 9.27417 16 12.0002 16C14.7262 16 17.0249 17.0536 17.8323 18.8747C16.3001 20.1607 14.2439 21 12.0002 21C9.75642 21 7.70025 20.1607 6.16803 18.8747Z" fill="url(#footer_paint2_linear)"/>
+                            <defs>
+                                <linearGradient id="footer_paint0_linear" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#7e22ce"/>
+                                    <stop offset="1" stop-color="#06b6d4"/>
+                                </linearGradient>
+                                <linearGradient id="footer_paint1_linear" x1="9" y1="7" x2="15" y2="13" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#7e22ce"/>
+                                    <stop offset="1" stop-color="#06b6d4"/>
+                                </linearGradient>
+                                <linearGradient id="footer_paint2_linear" x1="6" y1="16" x2="18" y2="21" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#7e22ce"/>
+                                    <stop offset="1" stop-color="#06b6d4"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <h2 class="text-2xl font-bold ml-2">Tamay</h2>
+                    </div>
+                    <p class="text-gray-400 max-w-md">Connect with people around the world through instant video chats. Make new friends, practice languages, or just have fun conversations.</p>
+                </div>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-8">
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3">Platform</h3>
+                        <ul class="space-y-2">
+                            <li><a href="#" class="text-gray-400 hover:text-white transition">Home</a></li>
+                            <li><a href="#features" class="text-gray-400 hover:text-white transition">Features</a></li>
+                            <li><a href="#how-it-works" class="text-gray-400 hover:text-white transition">How It Works</a></li>
+                            <li><a href="#faq" class="text-gray-400 hover:text-white transition">FAQ</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3">Legal</h3>
+                        <ul class="space-y-2">
+                            <li><a href="#" class="text-gray-400 hover:text-white transition">Privacy Policy</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition">Terms of Service</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition">Cookie Policy</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition">GDPR</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-semibold mb-3">Contact</h3>
+                        <ul class="space-y-2">
+                            <li><a href="#" class="text-gray-400 hover:text-white transition">Support</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition">Feedback</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition">Partners</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition">Careers</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center">
+                <p class="text-gray-400 text-sm">&copy; 2023 Tamay. All rights reserved.</p>
+                <div class="flex space-x-4 mt-4 sm:mt-0">
+                    <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-facebook"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-github"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- User Profile Modal -->
+    <div id="userProfileModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Your Profile</h2>
+                <button id="closeProfileModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+                <input type="text" id="displayName" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Your display name">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                <select id="userGender" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <option value="">Prefer not to say</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                <input type="number" id="userAge" min="18" max="100" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Your age">
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">About Me</label>
+                <textarea id="userAbout" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" rows="3" placeholder="Tell something about yourself"></textarea>
+            </div>
+            
+            <div class="mt-6">
+                <button id="saveProfileBtn" class="gradient-bg text-white font-medium py-2 px-4 rounded-full hover:opacity-90 transition w-full">
+                    Save Profile
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report User Modal -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Report User</h2>
+                <button id="closeReportModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Report</label>
+                <select id="reportReason" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <option value="">Select a reason</option>
+                    <option value="inappropriate">Inappropriate content</option>
+                    <option value="harassment">Harassment</option>
+                    <option value="spam">Spam</option>
+                    <option value="underage">Underage user</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Additional Details</label>
+                <textarea id="reportDetails" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" rows="3" placeholder="Please provide more details..."></textarea>
+            </div>
+            
+            <div class="mt-6">
+                <button id="submitReportBtn" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-full transition w-full">
+                    Submit Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Authentication Modal -->
+    <div id="authModal" class="modal">
+        <div class="modal-content max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Welcome to Tamay</h2>
+                <button id="closeAuthModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div id="authTabs" class="mb-6">
+                <div class="flex border-b">
+                    <button id="loginTab" class="py-2 px-4 border-b-2 border-purple-500 text-purple-500 font-medium">Login</button>
+                    <button id="signupTab" class="py-2 px-4 border-b-2 border-transparent text-gray-500 font-medium">Sign Up</button>
+                </div>
+            </div>
+            
+            <div id="loginForm">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="loginEmail" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Your email address">
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="loginPassword" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Your password">
+                    <div class="text-right mt-1">
+                        <a href="#" class="text-sm text-purple-600 hover:text-purple-800">Forgot password?</a>
+                    </div>
+                </div>
+                
+                <button id="loginBtn" class="gradient-bg text-white font-medium py-2 px-4 rounded-full hover:opacity-90 transition w-full mb-4">
+                    Login
+                </button>
+            </div>
+            
+            <div id="signupForm" class="hidden">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" id="signupEmail" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Your email address">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="signupPassword" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Choose a password">
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                    <input type="password" id="signupPasswordConfirm" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Confirm your password">
+                </div>
+                
+                <button id="signupBtn" class="gradient-bg text-white font-medium py-2 px-4 rounded-full hover:opacity-90 transition w-full mb-4">
+                    Create Account
+                </button>
+            </div>
+            
+            <div class="flex items-center my-4">
+                <hr class="flex-grow border-gray-300">
+                <span class="px-3 text-gray-500 text-sm">OR</span>
+                <hr class="flex-grow border-gray-300">
+            </div>
+            
+            <button id="googleLoginBtn" class="w-full border border-gray-300 font-medium py-2 px-4 rounded-full hover:bg-gray-50 transition flex items-center justify-center mb-3">
+                <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                    <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                </svg>
+                Continue with Google
+            </button>
+            
+            <button id="gmailLoginBtn" class="w-full border border-gray-300 font-medium py-2 px-4 rounded-full hover:bg-gray-50 transition flex items-center justify-center mb-6">
+                <i class="fas fa-envelope text-red-500 mr-2"></i>
+                Continue with Gmail
+            </button>
+            
+            <div class="border-t pt-4">
+                <button id="guestAccessBtn" class="w-full text-center text-gray-600 hover:text-purple-600 transition py-2">
+                    <i class="fas fa-user-secret mr-2"></i>Continue as Guest
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Modal -->
+    <div id="onboardingModal" class="onboarding-overlay">
+        <div class="onboarding-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Welcome to Tamay!</h2>
+                <button id="closeOnboardingModal" class="text-gray-400 hover:text-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p class="mb-4">Connect with people around the world in just a few steps:</p>
+            <div class="flex flex-col space-y-3 mb-6 text-left">
+                <div class="flex items-center">
+                    <div class="bg-purple-500 rounded-full w-6 h-6 flex items-center justify-center mr-3">
+                        <span class="text-white text-sm">1</span>
+                    </div>
+                    <p>Create an account or continue as guest</p>
+                </div>
+                <div class="flex items-center">
+                    <div class="bg-purple-500 rounded-full w-6 h-6 flex items-center justify-center mr-3">
+                        <span class="text-white text-sm">2</span>
+                    </div>
+                    <p>Allow camera and microphone access</p>
+                </div>
+                <div class="flex items-center">
+                    <div class="bg-purple-500 rounded-full w-6 h-6 flex items-center justify-center mr-3">
+                        <span class="text-white text-sm">3</span>
+                    </div>
+                    <p>Set your preferences for better matches</p>
+                </div>
+                <div class="flex items-center">
+                    <div class="bg-purple-500 rounded-full w-6 h-6 flex items-center justify-center mr-3">
+                        <span class="text-white text-sm">4</span>
+                    </div>
+                    <p>Click "Start Chat" to begin meeting people!</p>
+                </div>
+            </div>
+            <button id="startOnboarding" class="gradient-bg text-white font-medium py-2 px-4 rounded-full hover:opacity-90 transition w-full">
+                Let's Get Started
+            </button>
+        </div>
+    </div>
+
+    <!-- Main JavaScript -->
+    <script>
+        // DOM Elements
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const startChatBtn = document.getElementById('startChatBtn');
+        const startChatQuickBtn = document.getElementById('startChatQuickBtn');
+        const toggleVideoBtn = document.getElementById('toggleVideoBtn');
+        const toggleAudioBtn = document.getElementById('toggleAudioBtn');
+        const flipCameraBtn = document.getElementById('flipCameraBtn');
+        const screenshareBtn = document.getElementById('screenshareBtn');
+        const effectsBtn = document.getElementById('effectsBtn');
+        const reportBtn = document.getElementById('reportBtn');
+        const chatInput = document.getElementById('chatInput');
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        const chatMessages = document.getElementById('chatMessages');
+        const waitingOverlay = document.getElementById('waitingOverlay');
+        const waitingText = document.getElementById('waitingText');
+        const localStatus = document.getElementById('localStatus');
+        const localStatusText = document.getElementById('localStatusText');
+        const remoteStatus = document.getElementById('remoteStatus');
+        const remoteStatusText = document.getElementById('remoteStatusText');
+        const reportModal = document.getElementById('reportModal');
+        const closeReportModal = document.getElementById('closeReportModal');
+        const submitReportBtn = document.getElementById('submitReportBtn');
+        const userProfileModal = document.getElementById('userProfileModal');
+        const userProfileBtn = document.getElementById('userProfileBtn');
+        const closeProfileModal = document.getElementById('closeProfileModal');
+        const saveProfileBtn = document.getElementById('saveProfileBtn');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const remoteBadge = document.getElementById('remoteBadge');
+        const onlineUserCount = document.getElementById('onlineUserCount');
+        const onboardingModal = document.getElementById('onboardingModal');
+        const closeOnboardingModal = document.getElementById('closeOnboardingModal');
+        const startOnboarding = document.getElementById('startOnboarding');
+        const authModal = document.getElementById('authModal');
+        const closeAuthModal = document.getElementById('closeAuthModal');
+        const loginTab = document.getElementById('loginTab');
+        const signupTab = document.getElementById('signupTab');
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const signupBtn = document.getElementById('signupBtn');
+        const googleLoginBtn = document.getElementById('googleLoginBtn');
+        const gmailLoginBtn = document.getElementById('gmailLoginBtn');
+        const guestAccessBtn = document.getElementById('guestAccessBtn');
+
+        // WebRTC variables
+        let localStream;
+        let remoteStream;
+        let peerConnection;
+        let signalingConnection;
+        let localUserId;
+        let remoteUserId;
+        let isConnected = false;
+        let isSearching = false;
+        let isVideoEnabled = true;
+        let isAudioEnabled = true;
+        let darkMode = false;
+        let activeUsers = [];
+        let isLoggedIn = false;
+        let currentUser = null;
+        let authMode = null;
+        let waitingRoom = []; // Simulated waiting room for matching
+        let onlineUserCountInterval;
+
+        // STUN/TURN servers for NAT traversal
+        const iceServers = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
+                // In a production environment, add your TURN servers here
+                // { urls: 'turn:your-turn-server.com:3478', username: 'username', credential: 'password' }
+            ]
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', init);
+        
+        function init() {
+            // Set up event listeners
+            startChatBtn.addEventListener('click', startChat);
+            startChatQuickBtn.addEventListener('click', startChat);
+            toggleVideoBtn.addEventListener('click', toggleVideo);
+            toggleAudioBtn.addEventListener('click', toggleAudio);
+            flipCameraBtn.addEventListener('click', flipCamera);
+            screenshareBtn.addEventListener('click', toggleScreenShare);
+            effectsBtn.addEventListener('click', toggleEffects);
+            reportBtn.addEventListener('click', openReportModal);
+            closeReportModal.addEventListener('click', closeModal);
+            submitReportBtn.addEventListener('click', submitReport);
+            userProfileBtn.addEventListener('click', openProfileModal);
+            closeProfileModal.addEventListener('click', closeModal);
+            saveProfileBtn.addEventListener('click', saveProfile);
+            darkModeToggle.addEventListener('click', toggleDarkMode);
+            mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+            closeOnboardingModal.addEventListener('click', () => onboardingModal.style.display = 'none');
+            startOnboarding.addEventListener('click', startOnboardingProcess);
+            closeAuthModal.addEventListener('click', () => authModal.style.display = 'none');
+            loginTab.addEventListener('click', switchToLoginTab);
+            signupTab.addEventListener('click', switchToSignupTab);
+            loginBtn.addEventListener('click', handleEmailLogin);
+            signupBtn.addEventListener('click', handleEmailSignup);
+            googleLoginBtn.addEventListener('click', handleGoogleLogin);
+            gmailLoginBtn.addEventListener('click', handleGmailLogin);
+            guestAccessBtn.addEventListener('click', handleGuestAccess);
+            
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            sendMessageBtn.addEventListener('click', sendMessage);
+            
+            // Check for stored preferences
+            loadStoredPreferences();
+
+            // Initialize authentication
+            initAuth();
+            
+            // Check if dark mode is preferred
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                toggleDarkMode();
+            }
+            
+            // Simulate connecting to a signaling server
+            console.log("Connecting to signaling server...");
+            setupSignalingServer();
+
+            // Start updating online user count
+            startOnlineUserCountUpdates();
+
+            // Show onboarding for first-time users
+            if (!localStorage.getItem('tamayOnboardingComplete')) {
+                onboardingModal.style.display = 'flex';
+            }
+        }
+
+        function initAuth() {
+            // Check if the user has a saved session
+            const savedUser = localStorage.getItem('tamayUser');
+            const savedAuthMode = localStorage.getItem('tamayAuthMode');
+            
+            if (savedUser && savedAuthMode) {
+                currentUser = JSON.parse(savedUser);
+                authMode = savedAuthMode;
+                isLoggedIn = true;
+                updateUIForLoggedInUser();
+            }
+        }
+
+        function switchToLoginTab() {
+            loginTab.classList.add('border-purple-500', 'text-purple-500');
+            loginTab.classList.remove('border-transparent', 'text-gray-500');
+            signupTab.classList.add('border-transparent', 'text-gray-500');
+            signupTab.classList.remove('border-purple-500', 'text-purple-500');
+            loginForm.classList.remove('hidden');
+            signupForm.classList.add('hidden');
+        }
+
+        function switchToSignupTab() {
+            signupTab.classList.add('border-purple-500', 'text-purple-500');
+            signupTab.classList.remove('border-transparent', 'text-gray-500');
+            loginTab.classList.add('border-transparent', 'text-gray-500');
+            loginTab.classList.remove('border-purple-500', 'text-purple-500');
+            signupForm.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+        }
+
+        function handleEmailLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!email || !password) {
+                alert('Please enter both email and password');
+                return;
+            }
+            
+            // In a real implementation, this would validate with a backend server
+            // For demo purposes, we'll simulate a successful login
+            currentUser = {
+                id: generateRandomId(),
+                email: email,
+                displayName: email.split('@')[0],
+                photoUrl: 'https://imgur.com/a/uKyQ6Q9' + encodeURIComponent(email.split('@')[0])
+            };
+            
+            isLoggedIn = true;
+            authMode = 'email';
+            
+            // Save user in localStorage
+            localStorage.setItem('tamayUser', JSON.stringify(currentUser));
+            localStorage.setItem('tamayAuthMode', authMode);
+            
+            // Update UI and close modal
+            updateUIForLoggedInUser();
+            authModal.style.display = 'none';
+            
+            // Show welcome message
+            alert('Welcome back, ' + currentUser.displayName + '!');
+        }
+
+        function handleEmailSignup() {
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
+            
+            if (!email || !password || !passwordConfirm) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            if (password !== passwordConfirm) {
+                alert('Passwords do not match');
+                return;
+            }
+            
+            // In a real implementation, this would create an account on a backend server
+            // For demo purposes, we'll simulate a successful signup
+            currentUser = {
+                id: generateRandomId(),
+                email: email,
+                displayName: email.split('@')[0],
+                photoUrl: 'https://imgur.com/a/uKyQ6Q9' + encodeURIComponent(email.split('@')[0])
+            };
+            
+            isLoggedIn = true;
+            authMode = 'email';
+            
+            // Save user in localStorage
+            localStorage.setItem('tamayUser', JSON.stringify(currentUser));
+            localStorage.setItem('tamayAuthMode', authMode);
+            
+            // Update UI and close modal
+            updateUIForLoggedInUser();
+            authModal.style.display = 'none';
+            
+            // Show welcome message
+            alert('Account created successfully! Welcome, ' + currentUser.displayName + '!');
+        }
+
+        function handleGoogleLogin() {
+            // In a real implementation, this would use Google OAuth
+            // For demo purposes, we'll simulate a successful Google login
+            const randomName = 'User' + Math.floor(Math.random() * 1000);
+            
+            currentUser = {
+                id: generateRandomId(),
+                email: randomName.toLowerCase() + '@gmail.com',
+                displayName: randomName,
+                photoUrl: 'https://imgur.com/a/uKyQ6Q9' + randomName
+            };
+            
+            isLoggedIn = true;
+            authMode = 'google';
+            
+            // Save user in localStorage
+            localStorage.setItem('tamayUser', JSON.stringify(currentUser));
+            localStorage.setItem('tamayAuthMode', authMode);
+            
+            // Update UI and close modal
+            updateUIForLoggedInUser();
+            authModal.style.display = 'none';
+            
+            // Show welcome message
+            alert('Google login successful! Welcome, ' + currentUser.displayName + '!');
+        }
+
+        function handleGmailLogin() {
+            // In a real implementation, this would authenticate with Gmail
+            // For demo purposes, we'll simulate a successful Gmail login
+            const randomName = 'User' + Math.floor(Math.random() * 1000);
+            
+            currentUser = {
+                id: generateRandomId(),
+                email: randomName.toLowerCase() + '@gmail.com',
+                displayName: randomName,
+                photoUrl: 'https://imgur.com/a/uKyQ6Q9' + randomName
+            };
+            
+            isLoggedIn = true;
+            authMode = 'gmail';
+            
+            // Save user in localStorage
+            localStorage.setItem('tamayUser', JSON.stringify(currentUser));
+            localStorage.setItem('tamayAuthMode', authMode);
+            
+            // Update UI and close modal
+            updateUIForLoggedInUser();
+            authModal.style.display = 'none';
+            
+            // Show welcome message
+            alert('Gmail login successful! Welcome, ' + currentUser.displayName + '!');
+        }
+
+        function handleGuestAccess() {
+            // Create a temporary guest user
+            const guestName = 'Guest' + Math.floor(Math.random() * 10000);
+            
+            currentUser = {
+                id: generateRandomId(),
+                email: null,
+                displayName: guestName,
+                photoUrl: 'https://ui-avatars.com/api/?name=Guest'
+            };
+            
+            isLoggedIn = true;
+            authMode = 'guest';
+            
+            // Guest sessions are not saved to localStorage for persistence
+            
+            // Update UI and close modal
+            updateUIForLoggedInUser();
+            authModal.style.display = 'none';
+            
+            // Show welcome message
+            alert('Welcome, ' + currentUser.displayName + '! You are browsing as a guest. Your session will not be saved after you leave.');
+        }
+
+        function handleLogout() {
+            // Clear user data
+            currentUser = null;
+            isLoggedIn = false;
+            authMode = null;
+            
+            // Remove from localStorage
+            localStorage.removeItem('tamayUser');
+            localStorage.removeItem('tamayAuthMode');
+            
+            // Update UI
+            updateUIForLoggedOutUser();
+            
+            // Show auth modal again
+            authModal.style.display = 'block';
+        }
+
+        function updateUIForLoggedInUser() {
+            if (!currentUser) return;
+            
+            // Update user profile button
+            userProfileBtn.innerHTML = `
+                <img src="${currentUser.photoUrl}" alt="${currentUser.displayName}" class="w-8 h-8 rounded-full mr-2">
+                <span class="hidden md:inline">${currentUser.displayName}</span>
+            `;
+            
+            // Add a dropdown menu for logout
+            userProfileBtn.onclick = function(e) {
+                e.stopPropagation();
+                const dropdown = document.getElementById('profileDropdown');
+                dropdown.classList.toggle('hidden');
+                
+                if (!dropdown.classList.contains('hidden')) {
+                    dropdown.innerHTML = `
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                            <div class="px-4 py-2 text-sm text-gray-700 border-b">
+                                <p class="font-semibold">${currentUser.displayName}</p>
+                                ${currentUser.email ? `<p class="text-xs text-gray-500">${currentUser.email}</p>` : ''}
+                            </div>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Edit Profile</a>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Settings</a>
+                            <button id="logoutBtn" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</button>
+                        </div>
+                    `;
+                    
+                    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+                    
+                    // Close dropdown when clicking outside
+                    document.addEventListener('click', closeDropdown);
+                } else {
+                    document.removeEventListener('click', closeDropdown);
+                }
+            };
+            
+            function closeDropdown(e) {
+                if (!document.getElementById('profileDropdown').contains(e.target) && e.target !== userProfileBtn) {
+                    document.getElementById('profileDropdown').classList.add('hidden');
+                    document.removeEventListener('click', closeDropdown);
+                }
+            }
+        }
+
+        function updateUIForLoggedOutUser() {
+            userProfileBtn.innerHTML = `<i class="fas fa-user mr-2"></i>Login`;
+            userProfileBtn.onclick = function() {
+                authModal.style.display = 'block';
+            };
+
+            document.getElementById('profileDropdown').classList.add('hidden');
+        }
+        
+        function loadStoredPreferences() {
+            // Load any stored preferences from localStorage
+            if (localStorage.getItem('darkMode') === 'true') {
+                toggleDarkMode();
+            }
+            
+            if (localStorage.getItem('displayName')) {
+                document.getElementById('displayName').value = localStorage.getItem('displayName');
+            }
+            
+            if (localStorage.getItem('userGender')) {
+                document.getElementById('userGender').value = localStorage.getItem('userGender');
+            }
+            
+            if (localStorage.getItem('userAge')) {
+                document.getElementById('userAge').value = localStorage.getItem('userAge');
+            }
+            
+            if (localStorage.getItem('userAbout')) {
+                document.getElementById('userAbout').value = localStorage.getItem('userAbout');
+            }
+        }
+
+        function startOnboardingProcess() {
+            // Hide onboarding modal
+            onboardingModal.style.display = 'none';
+            
+            // Mark onboarding as complete
+            localStorage.setItem('tamayOnboardingComplete', 'true');
+            
+            // Show auth modal
+            authModal.style.display = 'block';
+        }
+        
+        function setupSignalingServer() {
+            // In a real implementation, this would connect to a WebSocket server
+            // For demo purposes, we're creating a more realistic simulation
+            
+            // Simulate connecting to the server
+            console.log("Connecting to signaling server...");
+            
+            // Simulate connection setup with a slight delay
+            setTimeout(() => {
+                console.log("Connected to signaling server");
+                
+                // Set up signaling connection object
+                signalingConnection = {
+                    // Simulate server-assigned user ID
+                    userId: generateRandomId(),
+                    
+                    // Method to send messages to the signaling server
+                    send: function(message) {
+                        console.log("Sending to signaling server:", message);
+                        
+                        // Handle different message types
+                        if (message.type === 'join') {
+                            this.handleJoinRequest(message);
+                        } 
+                        else if (message.type === 'leave') {
+                            this.handleLeaveRequest(message);
+                        }
+                        else if (message.type === 'offer') {
+                            this.handleOffer(message);
+                        }
+                        else if (message.type === 'answer') {
+                            this.handleAnswer(message);
+                        }
+                        else if (message.type === 'ice-candidate') {
+                            this.handleIceCandidate(message);
+                        }
+                        else if (message.type === 'find-match') {
+                            this.findMatch(message);
+                        }
+                    },
+                    
+                    // Simulate handling a join request
+                    handleJoinRequest: function(message) {
+                        // Add user to active users
+                        activeUsers.push({
+                            id: this.userId,
+                            preferences: message.preferences || {}
+                        });
+                        
+                        // Notify client of successful join
+                        this.onMessage({
+                            type: 'joined',
+                            userId: this.userId,
+                            activeUsers: activeUsers.length
+                        });
+                    },
+                    
+                    // Simulate handling a leave request
+                    handleLeaveRequest: function(message) {
+                        // Remove user from active users
+                        activeUsers = activeUsers.filter(user => user.id !== this.userId);
+                        
+                        // In a real implementation, would also notify peers
+                    },
+                    
+                    // Simulate finding a match
+                    findMatch: function(message) {
+                        // Add user to waiting room
+                        waitingRoom.push({
+                            id: this.userId,
+                            preferences: message.preferences || {}
+                        });
+                        
+                        console.log("User added to waiting room. Current size:", waitingRoom.length);
+                        
+                        // Simulate looking for matches with a delay
+                        setTimeout(() => {
+                            if (waitingRoom.length >= 2) {
+                                // For demo purposes, just match the first two people in the waiting room
+                                const user1 = waitingRoom.shift();
+                                const user2 = waitingRoom.shift();
+                                
+                                console.log("Match found between", user1.id, "and", user2.id);
+                                
+                                // In a real implementation, this would send to the specific users
+                                // For demo, we'll just trigger our own match since we're simulating
+                                if (user1.id === this.userId || user2.id === this.userId) {
+                                    const peerId = user1.id === this.userId ? user2.id : user1.id;
+                                    
+                                    this.onMessage({
+                                        type: 'match-found',
+                                        peerId: peerId
+                                    });
+                                }
+                            } else {
+                                // If no immediate match, keep looking with random delays
+                                // to simulate real-world conditions where users join at different times
+                                const checkInterval = setInterval(() => {
+                                    // Create a simulated peer
+                                    const simulatedPeer = {
+                                        id: generateRandomId(),
+                                        preferences: {} // Would match preferences in real implementation
+                                    };
+                                    
+                                    // Find the user in the waiting room
+                                    const userIndex = waitingRoom.findIndex(u => u.id === this.userId);
+                                    
+                                    if (userIndex !== -1) {
+                                        // Remove the user from waiting room
+                                        waitingRoom.splice(userIndex, 1);
+                                        
+                                        // Notify of the match
+                                        this.onMessage({
+                                            type: 'match-found',
+                                            peerId: simulatedPeer.id
+                                        });
+                                        
+                                        clearInterval(checkInterval);
+                                    } else {
+                                        // If user is no longer in waiting room, stop checking
+                                        clearInterval(checkInterval);
+                                    }
+                                }, 2000 + Math.random() * 3000); // Random delay between 2-5 seconds
+                            }
+                        }, 1000); // Initial delay
+                    },
+                    
+                    // Simulate handling an offer
+                    handleOffer: function(message) {
+                        // In a real implementation, this would forward the offer to the peer
+                        // For demo, simulate receiving an answer after a delay
+                        setTimeout(() => {
+                            const simulatedAnswer = {
+                                type: 'answer',
+                                sdp: 'simulated SDP answer string',
+                                from: message.to
+                            };
+                            
+                            this.onMessage(simulatedAnswer);
+                            
+                            // Also simulate receiving ICE candidates
+                            for (let i = 0; i < 3; i++) {
+                                setTimeout(() => {
+                                    this.onMessage({
+                                        type: 'ice-candidate',
+                                        candidate: {
+                                            candidate: 'candidate:' + i + ' 1 UDP 2122194687 192.168.1.108 58272 typ host',
+                                            sdpMid: '0',
+                                            sdpMLineIndex: 0
+                                        },
+                                        from: message.to
+                                    });
+                                }, 500 + i * 200);
+                            }
+                        }, 800);
+                    },
+                    
+                    // Simulate handling an answer
+                    handleAnswer: function(message) {
+                        // In a real implementation, this would forward the answer to the peer
+                        // For demo, we don't need to do anything as we're simulating both sides
+                    },
+                    
+                    // Simulate handling an ICE candidate
+                    handleIceCandidate: function(message) {
+                        // In a real implementation, this would forward the ICE candidate to the peer
+                        // For demo, we don't need to do anything as we're simulating both sides
+                    },
+                    
+                    // Method to handle incoming messages from the server
+                    onMessage: function(message) {
+                        console.log("Received from signaling server:", message);
+                        
+                        // Process different message types
+                        if (message.type === 'joined') {
+                            // Store the assigned user ID
+                            localUserId = message.userId;
+                            console.log("Assigned user ID:", localUserId);
+                            
+                            // Update UI to show connection status
+                            updateLocalStatus('connected', 'Connected to server');
+                        }
+                        else if (message.type === 'match-found') {
+                            // Handle being matched with another user
+                            handleMatchFound(message.peerId);
+                        }
+                        else if (message.type === 'offer') {
+                            // Handle receiving an offer from a peer
+                            handleRemoteOffer(message);
+                        }
+                        else if (message.type === 'answer') {
+                            // Handle receiving an answer to our offer
+                            handleRemoteAnswer(message);
+                        }
+                        else if (message.type === 'ice-candidate') {
+                            // Handle receiving ICE candidates from a peer
+                            handleRemoteIceCandidate(message);
+                        }
+                    },
+                    
+                    // Method to close the connection
+                    close: function() {
+                        console.log("Disconnecting from signaling server");
+                        // Clean up code would go here in a real implementation
+                    }
+                };
+                
+                // Join the server as an active user
+                signalingConnection.send({
+                    type: 'join',
+                    preferences: getUserPreferences()
+                });
+                
+                // Update UI to reflect connection
+                updateLocalStatus('connecting', 'Connecting to server...');
+                
+                localUserId = signalingConnection.userId;
+            }, 1000);
+        }
+
+        function getUserPreferences() {
+            return {
+                gender: document.getElementById('genderPreference').value,
+                region: document.getElementById('regionPreference').value,
+                language: document.getElementById('languagePreference').value,
+                interests: document.getElementById('interestsInput').value.split(',').map(i => i.trim()).filter(i => i)
+            };
+        }
+        
+        async function startChat() {
+            if (!isLoggedIn) {
+                authModal.style.display = 'block';
+                return;
+            }
+
+            if (isSearching || isConnected) {
+                stopChat();
+                return;
+            }
+            
+            try {
+                // Request camera and microphone permissions if not already granted
+                if (!localStream) {
+                    localStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: true, 
+                        audio: true 
+                    });
+                    
+                    localVideo.srcObject = localStream;
+                    updateLocalStatus('connected', 'Camera on');
+                }
+                
+                // Update UI to searching state
+                startChatBtn.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop';
+                waitingText.textContent = 'Finding someone to chat with...';
+                waitingOverlay.classList.remove('hidden');
+                isSearching = true;
+                
+                // Set up WebRTC connection
+                createPeerConnection();
+                
+                // Get user preferences
+                const preferences = getUserPreferences();
+                
+                // Signal server to start search
+                signalingConnection.send({
+                    type: 'find-match',
+                    preferences: preferences
+                });
+                
+                // Show searching animation
+                waitingText.innerHTML = 'Searching for someone interesting<span class="dot-animation">...</span>';
+                animateSearchingDots();
+                
+            } catch (error) {
+                console.error("Error starting chat:", error);
+                alert("Could not access camera or microphone. Please check permissions and try again.");
+                updateLocalStatus('disconnected', 'Camera access denied');
+            }
+        }
+
+        function animateSearchingDots() {
+            const dotAnimation = document.querySelector('.dot-animation');
+            if (!dotAnimation) return;
+            
+            let dotCount = 0;
+            const dotInterval = setInterval(() => {
+                if (!isSearching) {
+                    clearInterval(dotInterval);
+                    return;
+                }
+                
+                dotCount = (dotCount + 1) % 4;
+                const dots = '.'.repeat(dotCount);
+                dotAnimation.textContent = dots;
+            }, 500);
+        }
+        
+        function stopChat() {
+            if (isConnected) {
+                // Close peer connection
+                if (peerConnection) {
+                    peerConnection.close();
+                    peerConnection = null;
+                }
+                
+                // Clear remote video
+                if (remoteVideo.srcObject) {
+                    const tracks = remoteVideo.srcObject.getTracks();
+                    tracks.forEach(track => track.stop());
+                    remoteVideo.srcObject = null;
+                }
+                
+                // Reset UI
+                remoteBadge.classList.add('hidden');
+                remoteStatus.classList.add('hidden');
+                waitingOverlay.classList.remove('hidden');
+                waitingText.textContent = 'Disconnected';
+                
+                // Reset chat
+                chatInput.disabled = true;
+                sendMessageBtn.disabled = true;
+                chatMessages.innerHTML = '<div class="text-center text-gray-500 text-sm my-2">Chat will be available when connected</div>';
+                
+                isConnected = false;
+            }
+            
+            if (isSearching) {
+                // Signal server to stop search
+                signalingConnection.send({
+                    type: 'leave',
+                    userId: localUserId
+                });
+                
+                // Remove from waiting room
+                const userIndex = waitingRoom.findIndex(u => u.id === localUserId);
+                if (userIndex !== -1) {
+                    waitingRoom.splice(userIndex, 1);
+                }
+                
+                waitingText.textContent = 'Waiting to connect...';
+                isSearching = false;
+            }
+            
+            // Update button
+            startChatBtn.innerHTML = '<i class="fas fa-play mr-2"></i>Start Chat';
+        }
+        
+        function createPeerConnection() {
+            // Clean up any existing connection
+            if (peerConnection) {
+                peerConnection.close();
+            }
+            
+            // Create a new RTCPeerConnection
+            peerConnection = new RTCPeerConnection(iceServers);
+            
+            // Add local tracks to the connection
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+            }
+            
+            // Handle incoming tracks (remote video/audio)
+            peerConnection.ontrack = (event) => {
+                if (!remoteStream) {
+                    remoteStream = new MediaStream();
+                    remoteVideo.srcObject = remoteStream;
+                }
+                
+                event.streams[0].getTracks().forEach(track => {
+                    remoteStream.addTrack(track);
+                });
+            };
+            
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    // Send ICE candidate to peer via signaling server
+                    signalingConnection.send({
+                        type: 'ice-candidate',
+                        candidate: event.candidate,
+                        to: remoteUserId,
+                        from: localUserId
+                    });
+                }
+            };
+            
+            // Connection state changes
+            peerConnection.oniceconnectionstatechange = () => {
+                console.log("ICE connection state:", peerConnection.iceConnectionState);
+                
+                if (peerConnection.iceConnectionState === 'connected' || 
+                    peerConnection.iceConnectionState === 'completed') {
+                    console.log("WebRTC connection established!");
+                    
+                    // Update UI for connected state
+                    waitingOverlay.classList.add('hidden');
+                    remoteStatus.classList.remove('hidden');
+                    updateRemoteStatus('connected', 'Connected');
+                    remoteBadge.classList.remove('hidden');
+                    
+                    // Enable chat
+                    chatInput.disabled = false;
+                    sendMessageBtn.disabled = false;
+                    chatMessages.innerHTML = '<div class="text-center text-gray-500 text-sm my-2">You are now connected! Say hello!</div>';
+                    
+                    isConnected = true;
+                    isSearching = false;
+                    
+                    // Update button
+                    startChatBtn.innerHTML = '<i class="fas fa-stop mr-2"></i>End Chat';
+                }
+                else if (peerConnection.iceConnectionState === 'failed' || 
+                         peerConnection.iceConnectionState === 'disconnected' || 
+                         peerConnection.iceConnectionState === 'closed') {
+                    console.log("WebRTC connection failed or closed");
+                    
+                    if (isConnected) {
+                        addSystemMessage("Connection lost. The other person has disconnected.");
+                        stopChat();
+                    }
+                }
+            };
+            
+            // Set up data channel for text chat
+            setupDataChannel();
+        }
+        
+        let dataChannel;
+        
+        function setupDataChannel() {
+            // Create a data channel for text chat
+            dataChannel = peerConnection.createDataChannel("chat", {
+                ordered: true
+            });
+            
+            // Handle data channel events
+            dataChannel.onopen = () => {
+                console.log("Data channel opened");
+                chatInput.disabled = false;
+                sendMessageBtn.disabled = false;
+            };
+            
+            dataChannel.onclose = () => {
+                console.log("Data channel closed");
+                chatInput.disabled = true;
+                sendMessageBtn.disabled = true;
+            };
+            
+            dataChannel.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    addMessage(message.text, false, message.timestamp);
+                } catch (e) {
+                    console.error("Error parsing message:", e);
+                    addMessage(event.data, false);
+                }
+            };
+            
+            // Handle receiving data channel from remote peer
+            peerConnection.ondatachannel = (event) => {
+                dataChannel = event.channel;
+                dataChannel.onmessage = (e) => {
+                    try {
+                        const message = JSON.parse(e.data);
+                        addMessage(message.text, false, message.timestamp);
+                    } catch (err) {
+                        console.error("Error parsing message:", err);
+                        addMessage(e.data, false);
+                    }
+                };
+            };
+        }
+        
+        async function handleMatchFound(peerId) {
+            console.log("Matched with peer:", peerId);
+            remoteUserId = peerId;
+            
+            waitingText.textContent = 'Connecting...';
+            updateRemoteStatus('connecting', 'Connecting...');
+            
+            try {
+                // Create and send an offer to the matched peer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                signalingConnection.send({
+                    type: 'offer',
+                    sdp: offer.sdp,
+                    to: remoteUserId,
+                    from: localUserId
+                });
+                
+            } catch (error) {
+                console.error("Error creating offer:", error);
+                stopChat();
+                alert("Failed to establish connection. Please try again.");
+            }
+        }
+        
+        async function handleRemoteOffer(message) {
+            try {
+                remoteUserId = message.from;
+                
+                // Create a proper RTCSessionDescription from the message
+                const offerDesc = new RTCSessionDescription({
+                    type: 'offer',
+                    sdp: message.sdp
+                });
+                
+                // Set remote description
+                await peerConnection.setRemoteDescription(offerDesc);
+                
+                // Create answer
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                // Send answer to peer
+                signalingConnection.send({
+                    type: 'answer',
+                    sdp: answer.sdp,
+                    to: remoteUserId,
+                    from: localUserId
+                });
+                
+            } catch (error) {
+                console.error("Error handling remote offer:", error);
+            }
+        }
+        
+        async function handleRemoteAnswer(message) {
+            try {
+                // Create a proper RTCSessionDescription from the message
+                const answerDesc = new RTCSessionDescription({
+                    type: 'answer',
+                    sdp: message.sdp
+                });
+                
+                // Apply the answer as the remote description
+                await peerConnection.setRemoteDescription(answerDesc);
+                
+                console.log("Remote answer applied successfully");
+                
+            } catch (error) {
+                console.error("Error handling remote answer:", error);
+            }
+        }
+        
+        async function handleRemoteIceCandidate(message) {
+            try {
+                // Create a proper RTCIceCandidate from the message
+                const candidate = new RTCIceCandidate(message.candidate);
+                
+                // Add the ICE candidate to the peer connection
+                await peerConnection.addIceCandidate(candidate);
+                
+                console.log("Added remote ICE candidate");
+                
+            } catch (error) {
+                console.error("Error handling remote ICE candidate:", error);
+            }
+        }
+        
+        function toggleVideo() {
+            if (localStream) {
+                localStream.getVideoTracks().forEach(track => {
+                    track.enabled = !track.enabled;
+                    isVideoEnabled = track.enabled;
+                });
+                
+                // Update UI
+                if (isVideoEnabled) {
+                    toggleVideoBtn.innerHTML = '<i class="fas fa-video text-gray-700"></i>';
+                    updateLocalStatus('connected', 'Camera on');
+                } else {
+                    toggleVideoBtn.innerHTML = '<i class="fas fa-video-slash text-red-500"></i>';
+                    updateLocalStatus('connecting', 'Camera off');
+                }
+            }
+        }
+        
+        function toggleAudio() {
+            if (localStream) {
+                localStream.getAudioTracks().forEach(track => {
+                    track.enabled = !track.enabled;
+                    isAudioEnabled = track.enabled;
+                });
+                
+                // Update UI
+                if (isAudioEnabled) {
+                    toggleAudioBtn.innerHTML = '<i class="fas fa-microphone text-gray-700"></i>';
+                } else {
+                    toggleAudioBtn.innerHTML = '<i class="fas fa-microphone-slash text-red-500"></i>';
+                }
+            }
+        }
+        
+        async function flipCamera() {
+            if (!localStream) return;
+            
+            // Get current video track
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (!videoTrack) return;
+            
+            // Get current constraints
+            const currentConstraints = videoTrack.getConstraints();
+            const currentFacingMode = currentConstraints.facingMode;
+            
+            // Set new facing mode
+            const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            
+            try {
+                // Stop current track
+                videoTrack.stop();
+                
+                // Get new stream with flipped camera
+                const newStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: newFacingMode },
+                    audio: true
+                });
+                
+                // Replace track in local stream
+                const newVideoTrack = newStream.getVideoTracks()[0];
+                const audioTrack = localStream.getAudioTracks()[0];
+                
+                localStream.removeTrack(videoTrack);
+                localStream.addTrack(newVideoTrack);
+                
+                // Update video element
+                localVideo.srcObject = localStream;
+                
+                // If connected, replace track in peer connection
+                if (peerConnection) {
+                    const senders = peerConnection.getSenders();
+                    const videoSender = senders.find(sender => 
+                        sender.track && sender.track.kind === 'video'
+                    );
+                    
+                    if (videoSender) {
+                        videoSender.replaceTrack(newVideoTrack);
+                    }
+                }
+                
+            } catch (error) {
+                console.error("Error flipping camera:", error);
+                alert("Failed to switch camera. Your device may only have one camera.");
+            }
+        }
+        
+        async function toggleScreenShare() {
+            if (!peerConnection) return;
+            
+            // Check if we're already screen sharing
+            const isScreenSharing = localStream.getVideoTracks()[0].label.includes('screen');
+            
+            try {
+                if (isScreenSharing) {
+                    // Switch back to camera
+                    const newStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: true, 
+                        audio: true 
+                    });
+                    
+                    // Stop screen share track
+                    localStream.getVideoTracks().forEach(track => track.stop());
+                    
+                    // Update local stream
+                    const newVideoTrack = newStream.getVideoTracks()[0];
+                    const audioTrack = newStream.getAudioTracks()[0];
+                    
+                    // Replace tracks in local stream
+                    replaceTracksInStream(localStream, newVideoTrack, audioTrack);
+                    
+                    // Update button
+                    screenshareBtn.innerHTML = '<i class="fas fa-desktop text-gray-700"></i>';
+                    
+                } else {
+                    // Start screen sharing
+                    const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+                        video: true,
+                        audio: true
+                    });
+                    
+                    // Handle user canceling the screen share dialog
+                    screenStream.getVideoTracks()[0].onended = () => {
+                        toggleScreenShare();
+                    };
+                    
+                    // Get tracks
+                    const screenVideoTrack = screenStream.getVideoTracks()[0];
+                    const screenAudioTrack = screenStream.getAudioTracks()[0] || localStream.getAudioTracks()[0];
+                    
+                    // Replace tracks in local stream
+                    replaceTracksInStream(localStream, screenVideoTrack, screenAudioTrack);
+                    
+                    // Update button
+                    screenshareBtn.innerHTML = '<i class="fas fa-desktop text-green-500"></i>';
+                }
+                
+                // Update video element
+                localVideo.srcObject = localStream;
+                
+                // Replace track in peer connection if connected
+                if (peerConnection && isConnected) {
+                    const senders = peerConnection.getSenders();
+                    const videoSender = senders.find(sender => 
+                        sender.track && sender.track.kind === 'video'
+                    );
+                    
+                    if (videoSender) {
+                        videoSender.replaceTrack(localStream.getVideoTracks()[0]);
+                    }
+                }
+                
+            } catch (error) {
+                console.error("Error toggling screen share:", error);
+                screenshareBtn.innerHTML = '<i class="fas fa-desktop text-gray-700"></i>';
+            }
+        }
+        
+        function replaceTracksInStream(stream, videoTrack, audioTrack) {
+            // Remove existing tracks
+            stream.getVideoTracks().forEach(track => {
+                stream.removeTrack(track);
+                track.stop();
+            });
+            
+            // Add new tracks
+            if (videoTrack) stream.addTrack(videoTrack);
+            if (audioTrack && !stream.getAudioTracks().length) stream.addTrack(audioTrack);
+        }
+        
+        function toggleEffects() {
+            const filters = [
+                'none',
+                'grayscale(100%)',
+                'sepia(100%)',
+                'invert(100%)',
+                'hue-rotate(180deg)',
+                'blur(5px)'
+            ];
+            
+            // Get current filter or default to none
+            const currentFilter = localVideo.style.filter || 'none';
+            const currentIndex = filters.indexOf(currentFilter);
+            
+            // Move to next filter, or back to start if at end
+            const nextIndex = (currentIndex + 1) % filters.length;
+            const newFilter = filters[nextIndex];
+            
+            // Apply the filter
+            localVideo.style.filter = newFilter;
+            
+            // Update button to show active state
+            if (newFilter === 'none') {
+                effectsBtn.innerHTML = '<i class="fas fa-magic text-gray-700"></i>';
+            } else {
+                effectsBtn.innerHTML = '<i class="fas fa-magic text-purple-500"></i>';
+            }
+            
+            // Show toast notification
+            const filterName = newFilter.split('(')[0] || 'Normal';
+            showToast(`Filter applied: ${filterName.charAt(0).toUpperCase() + filterName.slice(1)}`);
+        }
+        
+        function showToast(message) {
+            // Create toast element if it doesn't exist
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                toast.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm';
+                document.body.appendChild(toast);
+            }
+            
+            // Set message and show toast
+            toast.textContent = message;
+            toast.style.display = 'block';
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+        
+        function sendMessage() {
+            if (!dataChannel || dataChannel.readyState !== 'open') {
+                addSystemMessage("Can't send message. Connection not established.");
+                return;
+            }
+            
+            const text = chatInput.value.trim();
+            if (!text) return;
+            
+            // Send message via data channel
+            const message = {
+                text: text,
+                timestamp: new Date().toISOString()
+            };
+            
+            dataChannel.send(JSON.stringify(message));
+            
+            // Add message to UI
+            addMessage(text, true, message.timestamp);
+            
+            // Clear input
+            chatInput.value = '';
+        }
+        
+        function addMessage(text, isSent, timestamp = new Date().toISOString()) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = isSent ? 'message sent' : 'message received';
+            messageDiv.textContent = text;
+            
+            // Add timestamp as data attribute
+            const date = new Date(timestamp);
+            const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            messageDiv.setAttribute('data-time', timeString);
+            
+            // Add timestamp as visible element
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'text-xs opacity-70 ml-2';
+            timeSpan.textContent = timeString;
+            messageDiv.appendChild(timeSpan);
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function addSystemMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'text-center text-gray-500 text-sm my-2';
+            messageDiv.textContent = text;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function openReportModal() {
+            reportModal.style.display = 'block';
+        }
+        
+        function openProfileModal() {
+            if (!isLoggedIn) {
+                authModal.style.display = 'block';
+            } else {
+                userProfileModal.style.display = 'block';
+            }
+        }
+        
+        function closeModal() {
+            reportModal.style.display = 'none';
+            userProfileModal.style.display = 'none';
+            authModal.style.display = 'none';
+        }
+        
+        function submitReport() {
+            const reason = document.getElementById('reportReason').value;
+            const details = document.getElementById('reportDetails').value;
+            
+            if (!reason) {
+                alert('Please select a reason for your report.');
+                return;
+            }
+            
+            // In a real implementation, this would send the report to the server
+            console.log("Report submitted:", { reason, details, reportedUser: remoteUserId });
+            
+            // Add confirmation
+            alert('Thank you for your report. Our moderation team will review it shortly.');
+            
+            // Close modal
+            closeModal();
+            
+            // End the chat
+            stopChat();
+        }
+        
+        function saveProfile() {
+            const displayName = document.getElementById('displayName').value;
+            const gender = document.getElementById('userGender').value;
+            const age = document.getElementById('userAge').value;
+            const about = document.getElementById('userAbout').value;
+            
+            // In a real implementation, this would send the profile data to the server
+            console.log("Profile saved:", { displayName, gender, age, about });
+            
+            // Store in localStorage for demo purposes
+            localStorage.setItem('displayName', displayName);
+            localStorage.setItem('userGender', gender);
+            localStorage.setItem('userAge', age);
+            localStorage.setItem('userAbout', about);
+            
+            // Update current user if logged in
+            if (isLoggedIn && currentUser) {
+                currentUser.displayName = displayName || currentUser.displayName;
+                localStorage.setItem('tamayUser', JSON.stringify(currentUser));
+                updateUIForLoggedInUser();
+            }
+            
+            // Close modal
+            closeModal();
+            
+            // Update UI if needed
+            showToast('Your profile has been saved successfully!');
+        }
+        
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            
+            if (darkMode) {
+                document.body.classList.add('dark-mode');
+                darkModeToggle.innerHTML = '<i class="fas fa-sun text-yellow-400"></i>';
+                localStorage.setItem('darkMode', 'true');
+            } else {
+                document.body.classList.remove('dark-mode');
+                darkModeToggle.innerHTML = '<i class="fas fa-moon text-gray-700"></i>';
+                localStorage.setItem('darkMode', 'false');
+            }
+        }
+        
+        function toggleMobileMenu() {
+            const isHidden = mobileMenu.classList.contains('hidden');
+            
+            if (isHidden) {
+                mobileMenu.classList.remove('hidden');
+                mobileMenuBtn.innerHTML = '<i class="fas fa-times"></i>';
+            } else {
+                mobileMenu.classList.add('hidden');
+                mobileMenuBtn.innerHTML = '<i class="fas fa-bars"></i>';
+            }
+        }
+        
+        function updateLocalStatus(status, text) {
+            const dot = localStatus.querySelector('.connection-dot');
+            dot.className = 'connection-dot ' + status;
+            localStatusText.textContent = text;
+        }
+        
+        function updateRemoteStatus(status, text) {
+            const dot = remoteStatus.querySelector('.connection-dot');
+            dot.className = 'connection-dot ' + status;
+            remoteStatusText.textContent = text;
+        }
+        
+        function generateRandomId() {
+            return Math.random().toString(36).substring(2, 15);
+        }
+
+        function startOnlineUserCountUpdates() {
+            // Start with a realistic number
+            let baseUserCount = 1000 + Math.floor(Math.random() * 500);
+            
+            // Update the count
+            updateOnlineUserCount(baseUserCount);
+            
+            // Set up interval to periodically update the count
+            onlineUserCountInterval = setInterval(() => {
+                // Randomly fluctuate the count to simulate users joining/leaving
+                const fluctuation = Math.floor(Math.random() * 20) - 10; // -10 to +10
+                baseUserCount += fluctuation;
+                
+                // Ensure count doesn't go below a minimum
+                if (baseUserCount < 800) baseUserCount = 800 + Math.floor(Math.random() * 50);
+                
+                updateOnlineUserCount(baseUserCount);
+            }, 5000);
+        }
+
+        function updateOnlineUserCount(count) {
+            // Format the number with commas
+            const formattedCount = count.toLocaleString();
+            onlineUserCount.textContent = `${formattedCount} online`;
+        }
+        
+        // Close connections when the page is unloaded
+        window.addEventListener('beforeunload', () => {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            
+            if (peerConnection) {
+                peerConnection.close();
+            }
+            
+            if (signalingConnection) {
+                signalingConnection.close();
+            }
+
+            clearInterval(onlineUserCountInterval);
+        });
+    </script>
+</body>
 
